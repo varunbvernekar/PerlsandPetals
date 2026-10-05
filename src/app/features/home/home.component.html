@@ -1,0 +1,45 @@
+<!-- Hero Section -->
+<section class="hero-section">
+  <div class="hero-content">
+    <span class="hero-subtitle badge-gold">New Collection 2026</span>
+    <h1 class="hero-title">Timeless Luxury, Handcrafted for the Extraordinary</h1>
+    <p class="hero-description">Discover our signature collections of organic South Sea pearls and ethically sourced gemstone petals.</p>
+    <div class="hero-actions">
+      <a routerLink="/products" class="btn-primary">Explore Collections</a>
+      <a routerLink="/about" class="btn-outline">Our Atelier</a>
+    </div>
+  </div>
+</section>
+
+<!-- Featured Products Section -->
+<section class="section-container">
+  <div class="section-header">
+    <span class="gold-gradient-text badge-tag">Handcrafted Masterpieces</span>
+    <h2>Featured Creations</h2>
+    <p>Each piece tells a unique story of elegance and bespoke craftsmanship.</p>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="state-container loading-state">
+    <div class="spinner"></div>
+    <p>Retrieving fine creations...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="errorMessage && !isLoading" class="state-container error-state">
+    <p class="error-msg">{{ errorMessage }}</p>
+    <button type="button" class="btn-primary" (click)="loadFeaturedProducts()">Retry</button>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading && !errorMessage && featuredProducts.length === 0" class="state-container empty-state">
+    <p>No featured creations currently on display.</p>
+    <a routerLink="/products" class="btn-primary">Browse All Pieces</a>
+  </div>
+
+  <!-- Products Grid -->
+  <div *ngIf="!isLoading && !errorMessage && featuredProducts.length > 0" class="products-grid">
+    <app-product-card *ngFor="let item of featuredProducts" [product]="item"></app-product-card>
+  </div>
+</section>
+

@@ -1,0 +1,40 @@
+<div class="product-card" *ngIf="product">
+  <div class="card-image-wrapper">
+    <!-- Product image: lazy loaded, falls back to placeholder on error -->
+    <img
+      [src]="getMainImage()"
+      [alt]="product.name"
+      class="product-image"
+      loading="lazy"
+      (error)="onImageError($event)">
+
+    <div class="card-badges">
+      <span *ngIf="product.onSale" class="badge badge-sale">Sale</span>
+      <span *ngIf="product.featured" class="badge badge-gold">Featured</span>
+    </div>
+
+    <div class="image-overlay">
+      <a [routerLink]="['/products', product.id || product.slug]" class="btn-primary view-btn">
+        View Details
+      </a>
+    </div>
+  </div>
+
+  <div class="card-info">
+    <span class="category-name">{{ product.category }}</span>
+    <h3 class="product-name">
+      <a [routerLink]="['/products', product.id || product.slug]">{{ product.name }}</a>
+    </h3>
+    <p class="product-description">{{ product.description }}</p>
+
+    <div class="card-price-row">
+      <div class="price-container">
+        <span class="current-price">{{ (product.onSale && product.discountPrice ? product.discountPrice : product.originalPrice) | currency:'INR':'₹' }}</span>
+        <span *ngIf="product.onSale && product.discountPrice" class="original-price">{{ product.originalPrice | currency:'INR':'₹' }}</span>
+      </div>
+      <span class="stock-status" [class.in-stock]="product.available">
+        {{ product.available ? 'In Stock' : 'Out of Stock' }}
+      </span>
+    </div>
+  </div>
+</div>

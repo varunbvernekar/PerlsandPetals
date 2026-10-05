@@ -1,0 +1,123 @@
+<div class="admin-page-container">
+  <!-- Header -->
+  <div class="admin-header">
+    <div>
+      <a routerLink="/admin/dashboard" class="back-link">&larr; Back to Dashboard</a>
+      <h1>Manage Products</h1>
+    </div>
+    <a routerLink="/admin/products/add" class="btn-primary" id="btn-add-product">+ Add Product</a>
+  </div>
+
+  <!-- Success Message -->
+  <div class="alert alert-success" *ngIf="successMessage" role="alert">
+    <span>✓</span> {{ successMessage }}
+  </div>
+
+  <!-- Error Message -->
+  <div class="alert alert-error" *ngIf="errorMessage" role="alert">
+    <span>⚠</span> {{ errorMessage }}
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-backdrop" *ngIf="confirmDeleteId" (click)="cancelDelete()">
+    <div class="confirm-modal" (click)="$event.stopPropagation()">
+      <h3>Delete Product?</h3>
+      <p>Are you sure you want to delete <strong>"{{ confirmDeleteName }}"</strong>? This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-danger" (click)="confirmDelete()" id="btn-confirm-delete">Yes, Delete</button>
+        <button class="btn-outline" (click)="cancelDelete()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Loading products…</p>
+  </div>
+
+  <!-- Empty state -->
+  <div class="empty-state" *ngIf="!isLoading && !errorMessage && productList.length === 0">
+    <p>No products found. Add your first product!</p>
+    <a routerLink="/admin/products/add" class="btn-primary">+ Add Product</a>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card" *ngIf="!isLoading && productList.length > 0">
+    <table class="products-table" role="table">
+      <thead>
+        <tr>
+          <th class="col-thumb">Image</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Original Price</th>
+          <th>Discount Price</th>
+          <th>Status Flags</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of productList" [class.deleting]="deletingId === item.id">
+          <td class="col-thumb">
+            <div class="product-thumb">
+              <img
+                *ngIf="item.images && item.images.length > 0"
+                [src]="item.images[0]"
+                [alt]="item.name"
+                loading="lazy"
+                class="thumb-img"
+                (error)="$any($event.target).style.display='none'">
+              <div class="thumb-placeholder" *ngIf="!item.images || item.images.length === 0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                  <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/>
+                </svg>
+              </div>
+            </div>
+          </td>
+          <td>
+            <strong>{{ item.name }}</strong>
+          </td>
+          <td>
+            <span class="badge badge-gold">{{ item.category }}</span>
+          </td>
+          <td class="price-cell">₹{{ item.originalPrice | number }}</td>
+          <td class="price-cell">
+            <ng-container *ngIf="item.onSale && item.discountPrice; else noDiscount">
+              <span class="price-discount">₹{{ item.discountPrice | number }}</span>
+              <span class="badge badge-sale">{{ getDiscountPercent(item) }}% OFF</span>
+            </ng-container>
+            <ng-template #noDiscount>
+              <span class="text-muted">—</span>
+            </ng-template>
+          </td>
+          <td>
+            <div class="flag-badges">
+              <span class="stock-badge" [class.in-stock]="item.available" [class.out-stock]="!item.available">
+                {{ item.available ? 'Available' : 'Unavailable' }}
+              </span>
+              <span class="flag-tag sale-tag" *ngIf="item.onSale">Sale</span>
+              <span class="flag-tag featured-tag" *ngIf="item.featured">Featured</span>
+            </div>
+          </td>
+          <td>
+            <div class="table-actions">
+              <a [routerLink]="['/admin/products/edit', item.id]" class="btn-action edit" [id]="'btn-edit-' + item.id">Edit</a>
+              <button
+                class="btn-action delete"
+                (click)="promptDelete(item)"
+                [disabled]="deletingId === item.id"
+                [id]="'btn-delete-' + item.id">
+                {{ deletingId === item.id ? '…' : 'Delete' }}
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="product-count" *ngIf="!isLoading && productList.length > 0">
+    {{ productList.length }} product{{ productList.length !== 1 ? 's' : '' }} total
+  </p>
+</div>

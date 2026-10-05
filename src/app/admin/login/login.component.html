@@ -1,0 +1,70 @@
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="brand-section">
+      <span class="sparkle-icon">✦</span>
+      <h1 class="brand-name">Pearls & Petals</h1>
+      <h2 class="form-title">Admin Login</h2>
+      <p class="form-subtitle">Enter your administrator credentials to access the management portal.</p>
+    </div>
+
+    <!-- Error message alert -->
+    <div *ngIf="errorMessage" class="error-alert" role="alert">
+      <span class="error-icon">⚠️</span>
+      <span class="error-text">{{ errorMessage }}</span>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+      <!-- Email Field -->
+      <div class="form-group" [class.has-error]="email?.invalid && email?.touched">
+        <label for="admin-email">Email</label>
+        <div class="input-container">
+          <input
+            type="email"
+            id="admin-email"
+            formControlName="email"
+            placeholder="admin@pearlsandpetals.com"
+            autocomplete="email"
+          />
+        </div>
+        <div class="validation-message" *ngIf="email?.invalid && email?.touched">
+          <span *ngIf="email?.errors?.['required']">Email address is required.</span>
+          <span *ngIf="email?.errors?.['email']">Please enter a valid email address.</span>
+        </div>
+      </div>
+
+      <!-- Password Field -->
+      <div class="form-group" [class.has-error]="password?.invalid && password?.touched">
+        <label for="admin-password">Password</label>
+        <div class="input-container">
+          <input
+            type="password"
+            id="admin-password"
+            formControlName="password"
+            placeholder="••••••••••••"
+            autocomplete="current-password"
+          />
+        </div>
+        <div class="validation-message" *ngIf="password?.invalid && password?.touched">
+          <span *ngIf="password?.errors?.['required']">Password is required.</span>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        class="login-btn"
+        [disabled]="isLoading"
+      >
+        <span *ngIf="!isLoading">Login</span>
+        <span *ngIf="isLoading" class="loading-state">
+          <span class="spinner"></span>
+          <span>Signing in...</span>
+        </span>
+      </button>
+    </form>
+
+    <div class="card-footer">
+      <a routerLink="/" class="back-link">← Return to Store</a>
+    </div>
+  </div>
+</div>

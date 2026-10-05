@@ -1,0 +1,189 @@
+import { Injectable, inject } from '@angular/core';
+import { SupabaseService } from './supabase.service';
+import { Observable } from 'rxjs';
+
+/** Allowed MIME types for product images */
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+/** Max file size: 5 MB */
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
+export interface UploadProgress {
+  file: File;
+  progress: number; // 0–100
+  downloadURL?: string;
+  error?: string;
+  state: 'pending' | 'uploading' | 'done' | 'error';
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class StorageService {
+  private supabaseService = inject(SupabaseService);
+  private supabase = this.supabaseService.getClient();
+  private bucketName = 'product-images';
+
+  /**
+   * Validates a file for type and size constraints.
+   * Returns null if valid, or an error message string.
+   */
+  validateFile(file: File): string | null {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return `"${file.name}" is not a supported image format. Please use JPG, PNG, or WEBP.`;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      return `"${file.name}" is ${mb} MB — exceeds the 5 MB limit. Please compress or resize the image.`;
+    }
+    return null;
+  }
+
+  /**
+   * Uploads a single file to Supabase Storage under product-images/<productId>/<uniqueName>.
+   * Returns an Observable emitting UploadProgress snapshots.
+   */
+  uploadProductImage(
+    productId: string,
+    file: File
+  ): Observable<UploadProgress> {
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const uniqueName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const storagePath = `${productId}/${uniqueName}`;
+
+    return new Observable<UploadProgress>(observer => {
+      const performUpload = async () => {
+        try {
+          // Emit uploading state with 10% progress
+          observer.next({ file, progress: 10, state: 'uploading' });
+
+          // Upload file to Supabase Storage
+          const { data, error } = await this.supabase.storage
+            .from(this.bucketName)
+            .upload(storagePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (error) {
+            console.error('[StorageService] Upload error:', error);
+            observer.next({
+              file,
+              progress: 0,
+              state: 'error',
+              error: this.getUploadErrorMessage(error)
+            });
+            observer.complete();
+            return;
+          }
+
+          // Emit 90% progress
+          observer.next({ file, progress: 90, state: 'uploading' });
+
+          // Get public URL
+          const { data: publicData } = this.supabase.storage
+            .from(this.bucketName)
+            .getPublicUrl(storagePath);
+
+          const downloadURL = publicData?.publicUrl;
+
+          if (!downloadURL) {
+            throw new Error('Failed to get download URL');
+          }
+
+          // Emit success state
+          observer.next({
+            file,
+            progress: 100,
+            state: 'done',
+            downloadURL
+          });
+          observer.complete();
+        } catch (err) {
+          console.error('[StorageService] Upload error:', err);
+          observer.next({
+            file,
+            progress: 0,
+            state: 'error',
+            error: this.getUploadErrorMessage(err)
+          });
+          observer.complete();
+        }
+      };
+
+      performUpload();
+
+      // Cleanup on unsubscribe (if needed)
+      return () => {
+        // Could cancel upload if Supabase supports it
+      };
+    });
+  }
+
+  /**
+   * Deletes a file from Supabase Storage by its path.
+   * Safely extracts the path from the URL and deletes the object.
+   */
+  async deleteImageByUrl(url: string): Promise<void> {
+    if (!url || !url.includes('supabaseusercontent.com')) {
+      // Not a Supabase Storage URL — skip deletion
+      return;
+    }
+
+    try {
+      // Extract path from URL: https://...supabaseusercontent.com/storage/v1/object/public/product-images/path/to/file
+      const pathMatch = url.match(/\/storage\/v1\/object\/public\/([^?]+)/);
+      if (!pathMatch || !pathMatch[1]) {
+        console.warn('[StorageService] Could not extract path from URL:', url);
+        return;
+      }
+
+      const path = pathMatch[1];
+      const { error } = await this.supabase.storage
+        .from(this.bucketName)
+        .remove([path]);
+
+      if (error) {
+        // If the file is already gone, that's fine
+        if (error.message?.includes('not found')) {
+          console.warn('[StorageService] File already deleted or not found:', url);
+          return;
+        }
+        throw error;
+      }
+    } catch (err: any) {
+      console.error('[StorageService] Failed to delete image:', err);
+      throw err;
+    }
+  }
+
+  /**
+   * Translates Supabase Storage upload errors into friendly messages.
+   */
+  private getUploadErrorMessage(error: any): string {
+    const message = error?.message || '';
+    const status = error?.status || '';
+
+    if (message.includes('unauthorized') || message.includes('not authenticated')) {
+      return 'Permission denied. You must be signed in as admin to upload images.';
+    }
+
+    if (message.includes('Payload too large') || status === 413) {
+      return 'File is too large. Please use images smaller than 5 MB.';
+    }
+
+    if (message.includes('bucket') && message.includes('not found')) {
+      return 'Storage bucket not configured. Please contact support.';
+    }
+
+    if (message.includes('network') || status === 0) {
+      return 'Network connection error. Please check your internet and try again.';
+    }
+
+    if (message.includes('duplicate')) {
+      return 'File already exists. Please try a different file name.';
+    }
+
+    return message || 'Image upload failed. Please try again.';
+  }
+}

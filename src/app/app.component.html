@@ -1,0 +1,21 @@
+<div class="app-layout" [class.is-admin]="isAdminRoute">
+  <!-- Customer Fallback Banner -->
+  <aside *ngIf="!isAdminRoute && (productService.isFallbackActive$ | async) && !isBannerDismissed" class="fallback-banner" role="status" aria-live="polite">
+    <div class="banner-content">
+      <span class="icon" aria-hidden="true">💡</span>
+      <span><strong>Offline / Cached Catalog:</strong> Live catalog sync is restricted by your browser shields or network. If you are using <strong>Brave Browser</strong> or an <strong>Ad Blocker</strong>, toggle Shields off for <code>localhost</code> to enable live updates.</span>
+    </div>
+    <button type="button" class="dismiss-btn" (click)="isBannerDismissed = true" aria-label="Dismiss message">✕</button>
+  </aside>
+
+  <!-- Customer Navbar -->
+  <app-navbar *ngIf="!isAdminRoute"></app-navbar>
+
+  <!-- Main Content Wrapper -->
+  <main [class.main-content]="!isAdminRoute" [class.admin-wrapper]="isAdminRoute">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Customer Footer -->
+  <app-footer *ngIf="!isAdminRoute"></app-footer>
+</div>

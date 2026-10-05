@@ -1,0 +1,103 @@
+<div class="dashboard-container">
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="title-group">
+      <span class="brand-tag">Pearls & Petals</span>
+      <h1 class="page-heading">Admin Dashboard</h1>
+      <p class="page-subtitle">Real-time inventory overview and store metrics from the live catalog.</p>
+    </div>
+
+    <!-- Header Actions / Quick Nav -->
+    <div class="header-nav">
+      <a routerLink="/admin/dashboard" class="nav-btn active">
+        <span>📊</span> Dashboard
+      </a>
+      <a routerLink="/admin/products" class="nav-btn">
+        <span>📦</span> Products
+      </a>
+      <button type="button" class="nav-btn logout-action-btn" (click)="logout()">
+        <span>🚪</span> Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- Error Alert if any -->
+  <div *ngIf="errorMessage" class="error-banner">
+    <span class="error-icon">⚠️</span>
+    <span>{{ errorMessage }}</span>
+    <button type="button" class="retry-btn" (click)="loadDashboardData()">Retry</button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Calculating inventory metrics from the product catalog...</p>
+  </div>
+
+  <!-- 4 Metric Cards -->
+  <div *ngIf="!isLoading" class="metrics-grid">
+    <!-- Total Products -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">💎</span>
+        <span class="metric-label">Total Products</span>
+      </div>
+      <div class="metric-value">{{ totalProducts }}</div>
+      <div class="metric-footer">Total inventory items recorded</div>
+    </div>
+
+    <!-- Available Products -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">✅</span>
+        <span class="metric-label">Available Products</span>
+      </div>
+      <div class="metric-value status-available">{{ availableProducts }}</div>
+      <div class="metric-footer">In-stock and available for order</div>
+    </div>
+
+    <!-- Products on Sale -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">🏷️</span>
+        <span class="metric-label">Products on Sale</span>
+      </div>
+      <div class="metric-value status-sale">{{ onSaleProducts }}</div>
+      <div class="metric-footer">Pieces marked with discount price</div>
+    </div>
+
+    <!-- Featured Products -->
+    <div class="metric-card">
+      <div class="metric-header">
+        <span class="metric-icon">✨</span>
+        <span class="metric-label">Featured Products</span>
+      </div>
+      <div class="metric-value status-featured">{{ featuredProducts }}</div>
+      <div class="metric-footer">Showcased on store homepage</div>
+    </div>
+  </div>
+
+  <!-- Quick Management Links Section -->
+  <section *ngIf="!isLoading" class="quick-access-section">
+    <h2 class="section-title">Catalog Navigation</h2>
+    <div class="access-cards-grid">
+      <a routerLink="/admin/products" class="access-card">
+        <div class="card-icon">📦</div>
+        <div class="card-info">
+          <h3>View Products Catalog</h3>
+          <p>Browse the current collection items in the live catalog.</p>
+        </div>
+        <span class="arrow">→</span>
+      </a>
+
+      <a routerLink="/" target="_blank" rel="noopener" class="access-card">
+        <div class="card-icon">🛍️</div>
+        <div class="card-info">
+          <h3>Live Customer Storefront</h3>
+          <p>Open the public customer website in a new tab.</p>
+        </div>
+        <span class="arrow">↗</span>
+      </a>
+    </div>
+  </section>
+</div>

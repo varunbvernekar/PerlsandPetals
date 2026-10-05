@@ -1,0 +1,63 @@
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+
+  &.is-admin {
+    background: #0d0f12;
+  }
+}
+
+.fallback-banner {
+  background: rgba(212, 175, 55, 0.12);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.85rem;
+  color: #e6c875;
+  backdrop-filter: blur(8px);
+  z-index: 100;
+
+  .banner-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #fff;
+    }
+  }
+
+  .dismiss-btn {
+    background: none;
+    border: none;
+    color: #e6c875;
+    font-size: 1rem;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+    padding: 4px 8px;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+.main-content {
+  flex: 1;
+}
+
+.admin-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}

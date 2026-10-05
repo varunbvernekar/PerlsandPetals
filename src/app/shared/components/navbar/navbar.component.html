@@ -1,0 +1,29 @@
+<header class="navbar-header">
+  <div class="nav-container">
+    <!-- Brand Logo -->
+    <a routerLink="/" class="brand-logo">
+      <span class="brand-icon">
+        <img src="logo.svg" alt="Pearls & Petals logo" />
+      </span>
+      <span class="brand-text">Pearls & Petals</span>
+    </a>
+
+    <!-- Desktop Navigation Links -->
+    <nav class="nav-links" [class.active]="isMenuOpen">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="isMenuOpen = false">Home</a>
+      <a routerLink="/products" routerLinkActive="active" (click)="isMenuOpen = false">Collections</a>
+      <a routerLink="/category/necklaces" routerLinkActive="active" (click)="isMenuOpen = false">Necklaces</a>
+      <a routerLink="/category/earrings" routerLinkActive="active" (click)="isMenuOpen = false">Earrings</a>
+    </nav>
+
+    <!-- Nav Actions / Admin Link -->
+    <div class="nav-actions">
+      <!-- Mobile Menu Hamburger -->
+      <button class="menu-toggle" (click)="toggleMenu()" aria-label="Toggle Navigation">
+        <span class="bar" [class.open]="isMenuOpen"></span>
+        <span class="bar" [class.open]="isMenuOpen"></span>
+        <span class="bar" [class.open]="isMenuOpen"></span>
+      </button>
+    </div>
+  </div>
+</header>

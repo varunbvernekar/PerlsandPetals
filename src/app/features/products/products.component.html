@@ -1,0 +1,38 @@
+<div class="products-page-container">
+  <div class="page-header">
+    <span class="gold-gradient-text badge-tag">Exquisite Craftsmanship</span>
+    <h2>{{ selectedCategory !== 'All' ? (selectedCategory | titlecase) : 'All Collections' }}</h2>
+    <p>Browse our luxury collection of handcrafted fine jewellery.</p>
+  </div>
+
+  <div class="category-filter-bar">
+    <a routerLink="/products" [class.active]="selectedCategory === 'All'" class="filter-btn">All Pieces</a>
+    <a routerLink="/category/necklaces" [class.active]="selectedCategory.toLowerCase() === 'necklaces'" class="filter-btn">Necklaces</a>
+    <a routerLink="/category/earrings" [class.active]="selectedCategory.toLowerCase() === 'earrings'" class="filter-btn">Earrings</a>
+    <a routerLink="/category/rings" [class.active]="selectedCategory.toLowerCase() === 'rings'" class="filter-btn">Rings</a>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="state-container loading-state">
+    <div class="spinner"></div>
+    <p>Loading fine jewellery pieces...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="errorMessage && !isLoading" class="state-container error-state">
+    <p class="error-msg">{{ errorMessage }}</p>
+    <button type="button" class="btn-primary" (click)="loadProducts()">Retry</button>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading && !errorMessage && products.length === 0" class="state-container empty-state">
+    <p>No products found in this category.</p>
+    <a routerLink="/products" class="btn-primary">View All Pieces</a>
+  </div>
+
+  <!-- Products Grid -->
+  <div *ngIf="!isLoading && !errorMessage && products.length > 0" class="products-grid">
+    <app-product-card *ngFor="let item of products" [product]="item"></app-product-card>
+  </div>
+</div>
+

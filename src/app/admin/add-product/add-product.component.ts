@@ -1,0 +1,285 @@
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink, Router } from '@angular/router';
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  ReactiveFormsModule,
+  AbstractControl,
+  ValidationErrors
+} from '@angular/forms';
+import { Subscription } from 'rxjs';
+import { ProductService } from '../../core/services/product.service';
+import { StorageService, UploadProgress } from '../../core/services/storage.service';
+
+/** Cross-field validator: discount must be < original */
+function discountValidator(group: AbstractControl): ValidationErrors | null {
+  const orig = Number(group.get('originalPrice')?.value);
+  const disc = Number(group.get('discountPrice')?.value);
+  if (!disc) return null;
+  if (disc < 0) return { discountNegative: true };
+  if (disc >= orig) return { discountTooHigh: true };
+  return null;
+}
+
+/** Represents a file selected for upload (before upload) */
+interface PendingImage {
+  file: File;
+  previewUrl: string;
+  progress: number;
+  state: 'pending' | 'uploading' | 'done' | 'error';
+  downloadURL?: string;
+  error?: string;
+}
+
+@Component({
+  selector: 'app-add-product',
+  standalone: true,
+  imports: [CommonModule, RouterLink, ReactiveFormsModule],
+  templateUrl: './add-product.component.html',
+  styleUrl: './add-product.component.scss'
+})
+export class AddProductComponent implements OnInit, OnDestroy {
+  private fb = inject(FormBuilder);
+  private router = inject(Router);
+  private productService = inject(ProductService);
+  private storageService = inject(StorageService);
+
+  form!: FormGroup;
+  isSaving = false;
+  isUploading = false;
+  errorMessage = '';
+  fileError = '';
+  discountPercent = 0;
+
+  /** Images selected by the user but not yet uploaded */
+  pendingImages: PendingImage[] = [];
+
+  /** Already-uploaded image URLs (ready to save) */
+  uploadedUrls: string[] = [];
+
+  readonly categories = ['Necklaces', 'Earrings', 'Rings', 'Bracelets', 'Sets', 'Pendants'];
+
+  private uploadSubs: Subscription[] = [];
+
+  ngOnInit(): void {
+    this.form = this.fb.group({
+      name: ['', [Validators.required, Validators.minLength(3)]],
+      category: ['', Validators.required],
+      description: ['', [Validators.required, Validators.minLength(10)]],
+      originalPrice: [null, [Validators.required, Validators.min(1)]],
+      discountPrice: [null],
+      onSale: [false],
+      available: [true],
+      featured: [false]
+    }, { validators: discountValidator });
+
+    // Update discount % live whenever prices change
+    this.form.valueChanges.subscribe(() => {
+      const orig = Number(this.form.value.originalPrice);
+      const disc = Number(this.form.value.discountPrice);
+      this.discountPercent = this.productService.calculateDiscountPercent(orig, disc);
+    });
+  }
+
+  get f() { return this.form.controls; }
+
+  // ──────────────────────────────────────────────────────────────────
+  // Image handling
+  // ──────────────────────────────────────────────────────────────────
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    this.fileError = '';
+    const files = Array.from(input.files);
+
+    for (const file of files) {
+      const validationError = this.storageService.validateFile(file);
+      if (validationError) {
+        this.fileError = validationError;
+        continue;
+      }
+      const previewUrl = URL.createObjectURL(file);
+      this.pendingImages.push({ file, previewUrl, progress: 0, state: 'pending' });
+    }
+
+    // Reset input so the same file can be re-selected if removed
+    input.value = '';
+  }
+
+  removePendingImage(index: number): void {
+    const img = this.pendingImages[index];
+    if (img) {
+      URL.revokeObjectURL(img.previewUrl);
+    }
+    this.pendingImages.splice(index, 1);
+  }
+
+  removeUploadedImage(index: number): void {
+    this.uploadedUrls.splice(index, 1);
+  }
+
+  moveImageLeft(index: number): void {
+    if (index === 0) return;
+    [this.uploadedUrls[index - 1], this.uploadedUrls[index]] = [this.uploadedUrls[index], this.uploadedUrls[index - 1]];
+  }
+
+  moveImageRight(index: number): void {
+    if (index === this.uploadedUrls.length - 1) return;
+    [this.uploadedUrls[index + 1], this.uploadedUrls[index]] = [this.uploadedUrls[index], this.uploadedUrls[index + 1]];
+  }
+
+  get allUploaded(): boolean {
+    return this.pendingImages.every(img => img.state === 'done' || img.state === 'error');
+  }
+
+  get hasUploading(): boolean {
+    return this.pendingImages.some(img => img.state === 'uploading');
+  }
+
+  /**
+   * Uploads all pending images to the configured storage service.
+   * Requires the product name to generate a temp ID for the storage path.
+   */
+  async uploadImages(): Promise<void> {
+    const name = this.form.get('name')?.value?.trim();
+    if (!name) {
+      this.fileError = 'Please enter a product name before uploading images.';
+      return;
+    }
+
+    // Create a temporary storage folder ID based on slug
+    const tempId = this.productService.generateId(this.productService.generateSlug(name));
+
+    this.isUploading = true;
+    this.fileError = '';
+
+    const pending = this.pendingImages.filter(img => img.state === 'pending');
+    if (pending.length === 0) {
+      this.isUploading = false;
+      return;
+    }
+
+    let completed = 0;
+    const total = pending.length;
+
+    for (const img of pending) {
+      img.state = 'uploading';
+
+      await new Promise<void>((resolve, reject) => {
+        let isResolved = false;
+        
+        // Add timeout: if upload takes more than 5 minutes, fail it
+        const timeoutId = setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true;
+            img.state = 'error';
+            img.error = 'Upload timeout. Please try again.';
+            console.error(`[AddProductComponent] Upload timeout for file: ${img.file.name}`);
+            resolve();
+          }
+        }, 5 * 60 * 1000); // 5 minute timeout
+
+        const sub = this.storageService.uploadProductImage(tempId, img.file).subscribe({
+          next: (progress: UploadProgress) => {
+            img.progress = progress.progress;
+            img.state = progress.state;
+            console.log(`[AddProductComponent] Upload progress for ${img.file.name}: ${progress.progress}% (${progress.state})`);
+            
+            if (progress.state === 'done' && progress.downloadURL) {
+              if (!isResolved) {
+                isResolved = true;
+                clearTimeout(timeoutId);
+                img.downloadURL = progress.downloadURL;
+                this.uploadedUrls.push(progress.downloadURL);
+                completed++;
+                console.log(`[AddProductComponent] Upload complete for ${img.file.name}`);
+                resolve();
+              }
+            } else if (progress.state === 'error') {
+              if (!isResolved) {
+                isResolved = true;
+                clearTimeout(timeoutId);
+                img.error = progress.error;
+                completed++;
+                console.error(`[AddProductComponent] Upload error for ${img.file.name}:`, progress.error);
+                resolve();
+              }
+            }
+          },
+          error: (err) => {
+            if (!isResolved) {
+              isResolved = true;
+              clearTimeout(timeoutId);
+              img.state = 'error';
+              img.error = err?.message || 'Upload failed';
+              console.error(`[AddProductComponent] Observable error for ${img.file.name}:`, err);
+              resolve();
+            }
+          }
+        });
+        this.uploadSubs.push(sub);
+      });
+    }
+
+    this.isUploading = false;
+    // Remove successfully uploaded images from pending list
+    this.pendingImages = this.pendingImages.filter(img => img.state !== 'done');
+  }
+
+  isFieldInvalid(field: string): boolean {
+    const ctrl = this.form.get(field);
+    return !!(ctrl && ctrl.invalid && (ctrl.dirty || ctrl.touched));
+  }
+
+  async onSubmit(): Promise<void> {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+
+    if (this.hasUploading) {
+      this.errorMessage = 'Please wait for all uploads to complete before saving.';
+      return;
+    }
+
+    if (this.pendingImages.some(img => img.state === 'pending')) {
+      this.errorMessage = 'You have images selected but not yet uploaded. Click "Upload Images" first, or remove them.';
+      return;
+    }
+
+    this.isSaving = true;
+    this.errorMessage = '';
+
+    const raw = this.form.value;
+    const discountPrice = raw.discountPrice ? Number(raw.discountPrice) : undefined;
+
+    try {
+      await this.productService.addProduct({
+        name: raw.name.trim(),
+        category: raw.category,
+        description: raw.description.trim(),
+        originalPrice: Number(raw.originalPrice),
+        discountPrice,
+        onSale: !!raw.onSale,
+        available: !!raw.available,
+        featured: !!raw.featured,
+        images: [...this.uploadedUrls]
+      });
+      this.router.navigate(['/admin/products'], {
+        queryParams: { success: 'added', name: raw.name.trim() }
+      });
+    } catch (err: any) {
+      console.error('Add product failed:', err);
+      this.errorMessage = 'Failed to save product: ' + (err?.message || 'Unknown error.');
+      this.isSaving = false;
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Revoke all object URLs to avoid memory leaks
+    this.pendingImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
+    this.uploadSubs.forEach(s => s.unsubscribe());
+  }
+}
