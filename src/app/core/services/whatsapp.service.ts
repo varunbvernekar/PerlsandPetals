@@ -39,7 +39,11 @@ export class WhatsAppService {
 
     const formattedPrice = Number(effectivePrice).toLocaleString('en-IN');
 
-    let message = `Hi ${this.storeName}, I am interested in *${product.name}* priced at ₹${formattedPrice}. Is it available?`;
+    const stockInquiry = product.available
+      ? 'Is it available?'
+      : 'I see it is currently out of stock. Could you let me know when it will be available?';
+
+    let message = `Hi ${this.storeName}, I am interested in *${product.name}* priced at ₹${formattedPrice}. ${stockInquiry}`;
 
     if (product.id) {
       message += `\n\n*Product ID:* ${product.id}`;

@@ -207,8 +207,10 @@
   height: 120px;
   background: rgba(0,0,0,0.55);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
 
   .progress-label {
     font-size: 1.2rem;
@@ -225,6 +227,37 @@
     background: rgba(248, 113, 113, 0.35);
     .error-icon { font-size: 2rem; color: #f87171; cursor: help; }
   }
+
+  &.processing-overlay {
+    background: rgba(0, 0, 0, 0.65);
+    animation: pulseOverlay 1.5s ease-in-out infinite;
+  }
+
+  .processing-label {
+    font-size: 0.7rem;
+    color: var(--accent-gold-light);
+    letter-spacing: 0.04em;
+    font-weight: 600;
+  }
+}
+
+@keyframes pulseOverlay {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* WebP badge shown after processing */
+.webp-badge {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 0.65rem;
+  color: var(--accent-gold);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
 /* Progress bar */
@@ -398,6 +431,14 @@
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
+
+  &.spinner-gold {
+    border-color: rgba(212, 175, 55, 0.3);
+    border-top-color: var(--accent-gold);
+    width: 20px;
+    height: 20px;
+    border-width: 2.5px;
+  }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }

@@ -33,6 +33,14 @@ export class ProductsComponent implements OnInit, OnDestroy {
     });
   }
 
+  getCategoryTitle(): string {
+    const cat = (this.selectedCategory || 'All').toLowerCase();
+    if (cat === 'out-of-stock' || cat === 'out of stock') {
+      return 'Out of Stock Pieces';
+    }
+    return this.selectedCategory !== 'All' ? this.selectedCategory : 'All Collections';
+  }
+
   loadProducts(): void {
     this.isLoading = true;
     this.errorMessage = '';

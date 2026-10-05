@@ -71,17 +71,20 @@ export class AdminProductsComponent implements OnInit, OnDestroy {
   async confirmDelete(): Promise<void> {
     if (!this.confirmDeleteId) return;
     const idToDelete = this.confirmDeleteId;
+    const nameToDelete = this.confirmDeleteName || 'Product';
     this.deletingId = idToDelete;
     this.confirmDeleteId = null;
     this.errorMessage = '';
 
     try {
       await this.productService.deleteProduct(idToDelete);
-      this.successMessage = `"${this.confirmDeleteName || 'Product'}" was deleted successfully.`;
+      // Remove product immediately from the list
+      this.productList = this.productList.filter(p => p.id !== idToDelete);
+      this.successMessage = `"${nameToDelete}" was deleted successfully.`;
       setTimeout(() => this.successMessage = '', 4000);
     } catch (err: any) {
       console.error('Delete failed:', err);
-      this.errorMessage = 'Failed to delete product: ' + (err?.message || 'Unknown error');
+      this.errorMessage = this.productService.getErrorMessage(err);
     } finally {
       this.deletingId = null;
       this.confirmDeleteName = '';

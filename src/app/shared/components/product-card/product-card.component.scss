@@ -143,4 +143,16 @@
   &.in-stock {
     color: #4ade80;
   }
+
+  &.out-of-stock {
+    color: #f87171;
+    font-weight: 600;
+  }
 }
+
+.is-out-of-stock {
+  .product-image {
+    filter: saturate(0.85);
+  }
+}
+

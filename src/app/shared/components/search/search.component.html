@@ -1,0 +1,92 @@
+<!-- Full-screen backdrop -->
+<div class="search-backdrop" (click)="onBackdropClick($event)" role="dialog" aria-modal="true" aria-label="Product search">
+
+  <!-- Search Panel -->
+  <div class="search-panel" role="search">
+
+    <!-- Header row: input + close -->
+    <div class="search-header">
+      <div class="search-input-wrap">
+        <!-- Search icon -->
+        <svg class="search-icon-input" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+
+        <input
+          #searchInput
+          type="search"
+          id="global-search-input"
+          class="search-input"
+          [(ngModel)]="query"
+          (ngModelChange)="onQueryChange()"
+          placeholder="Search by name, category, description, or ID…"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          aria-label="Search products">
+
+        <!-- Clear button -->
+        <button
+          *ngIf="query.length > 0"
+          type="button"
+          class="clear-btn"
+          (click)="clearQuery()"
+          aria-label="Clear search">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Close panel -->
+      <button type="button" class="close-btn" (click)="close()" aria-label="Close search">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+        <span class="close-label">Close</span>
+      </button>
+    </div>
+
+    <!-- Body: results / states -->
+    <div class="search-body">
+
+      <!-- Loading -->
+      <div class="search-state" *ngIf="isLoading">
+        <div class="spinner"></div>
+        <p>Loading catalog…</p>
+      </div>
+
+      <!-- Idle (no query yet) -->
+      <div class="search-state search-idle" *ngIf="!isLoading && !hasSearched">
+        <div class="idle-icon" aria-hidden="true">🔍</div>
+        <p>Type to search across all collections</p>
+        <p class="idle-hint">Search by product name, category, description, or ID</p>
+      </div>
+
+      <!-- Results found -->
+      <div *ngIf="!isLoading && hasSearched && results.length > 0">
+        <p class="results-count">
+          <span>{{ results.length }} result{{ results.length !== 1 ? 's' : '' }}</span>
+          for <em>"{{ query.trim() }}"</em>
+        </p>
+        <div class="results-grid">
+          <app-product-card
+            *ngFor="let product of results; trackBy: trackById"
+            [product]="product"
+            (click)="close()">
+          </app-product-card>
+        </div>
+      </div>
+
+      <!-- No results -->
+      <div class="search-state search-empty" *ngIf="!isLoading && hasSearched && results.length === 0">
+        <div class="empty-icon" aria-hidden="true">🪷</div>
+        <p class="empty-title">No products found.</p>
+        <p class="empty-hint">Try a different keyword or browse our <a routerLink="/products" (click)="close()">full collection</a>.</p>
+      </div>
+
+    </div>
+
+  </div>
+</div>

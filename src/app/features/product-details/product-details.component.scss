@@ -2,12 +2,21 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 40px 24px 80px;
+
+  @media (max-width: 768px) {
+    padding: 16px 16px 60px;
+  }
 }
 
 .breadcrumbs {
   font-size: 0.85rem;
   color: var(--text-muted);
   margin-bottom: 32px;
+
+  @media (max-width: 768px) {
+    margin-bottom: 16px;
+    font-size: 0.8rem;
+  }
 
   a {
     color: var(--text-secondary);
@@ -28,6 +37,7 @@
 
   @media (max-width: 850px) {
     grid-template-columns: 1fr;
+    gap: 24px;
   }
 }
 
@@ -51,10 +61,14 @@
   .thumbnails-row {
     display: flex;
     gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
 
     .thumb-img {
       width: 75px;
       height: 75px;
+      flex-shrink: 0;
       object-fit: cover;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-light);
@@ -77,6 +91,11 @@
   .details-title {
     font-size: 2.8rem;
     margin: 12px 0;
+
+    @media (max-width: 768px) {
+      font-size: 1.85rem;
+      margin: 8px 0;
+    }
   }
 
   .price-box {
@@ -84,6 +103,10 @@
     align-items: baseline;
     gap: 12px;
     margin-bottom: 24px;
+
+    @media (max-width: 768px) {
+      margin-bottom: 16px;
+    }
 
     .current-price {
       color: var(--text-gold);
@@ -102,6 +125,11 @@
     color: var(--text-secondary);
     line-height: 1.7;
     margin-bottom: 28px;
+
+    @media (max-width: 768px) {
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
   }
 
   .features-list {
@@ -114,6 +142,11 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--border-light);
 
+    @media (max-width: 768px) {
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
     .feature-item {
       font-size: 0.95rem;
       color: var(--accent-pearl);
@@ -123,5 +156,14 @@
   .action-bar {
     display: flex;
     gap: 16px;
+
+    @media (max-width: 768px) {
+      .btn-primary {
+        width: 100%;
+        justify-content: center;
+        padding: 14px 24px;
+        font-size: 1rem;
+      }
+    }
   }
 }

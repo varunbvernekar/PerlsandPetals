@@ -25,10 +25,12 @@ CREATE INDEX idx_products_slug ON products(slug);
 -- Enable Row Level Security (RLS)
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 
--- POLICY 1: Public users can READ all available products
-CREATE POLICY "Public read available products" ON products
+-- POLICY 1: Public users can READ all products (both in-stock and out-of-stock)
+DROP POLICY IF EXISTS "Public read available products" ON products;
+DROP POLICY IF EXISTS "Public read all products" ON products;
+CREATE POLICY "Public read all products" ON products
   FOR SELECT
-  USING (available = true);
+  USING (true);
 
 -- POLICY 2: Only authenticated users (admins) can INSERT products
 CREATE POLICY "Authenticated users can insert products" ON products
@@ -44,7 +46,8 @@ CREATE POLICY "Authenticated users can update products" ON products
 -- POLICY 4: Only authenticated users (admins) can DELETE products
 CREATE POLICY "Authenticated users can delete products" ON products
   FOR DELETE
-  USING (auth.role() = 'authenticated');
+  TO authenticated
+  USING (true);
 
 -- Note: Admins must also be in the 'authenticated' role in Supabase
 -- The Supabase client library handles this automatically when using the anon key

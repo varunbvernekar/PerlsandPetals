@@ -116,6 +116,18 @@ button {
   border: 1px solid rgba(226, 168, 155, 0.3);
 }
 
+.badge-out-of-stock {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.badge-in-stock {
+  background: rgba(74, 222, 128, 0.15);
+  color: #86efac;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
 .btn-primary {
   background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-gold-dark) 100%);
   color: #0d0e12;

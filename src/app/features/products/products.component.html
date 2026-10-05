@@ -1,7 +1,7 @@
 <div class="products-page-container">
   <div class="page-header">
     <span class="gold-gradient-text badge-tag">Exquisite Craftsmanship</span>
-    <h2>{{ selectedCategory !== 'All' ? (selectedCategory | titlecase) : 'All Collections' }}</h2>
+    <h2>{{ getCategoryTitle() }}</h2>
     <p>Browse our luxury collection of handcrafted fine jewellery.</p>
   </div>
 
@@ -10,6 +10,8 @@
     <a routerLink="/category/necklaces" [class.active]="selectedCategory.toLowerCase() === 'necklaces'" class="filter-btn">Necklaces</a>
     <a routerLink="/category/earrings" [class.active]="selectedCategory.toLowerCase() === 'earrings'" class="filter-btn">Earrings</a>
     <a routerLink="/category/rings" [class.active]="selectedCategory.toLowerCase() === 'rings'" class="filter-btn">Rings</a>
+    <a routerLink="/category/bracelets" [class.active]="selectedCategory.toLowerCase() === 'bracelets'" class="filter-btn">Bracelets</a>
+    <a routerLink="/category/out-of-stock" [class.active]="selectedCategory.toLowerCase() === 'out-of-stock'" class="filter-btn filter-btn-out-of-stock">Out of Stock</a>
   </div>
 
   <!-- Loading State -->

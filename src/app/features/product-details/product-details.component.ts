@@ -29,8 +29,11 @@ export class ProductDetailsComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.scrollToTop();
+
     this.routeSub = this.route.params.subscribe(params => {
       this.productId = params['id'] || '';
+      this.scrollToTop();
       if (this.productId) {
         this.loadProduct();
       } else {
@@ -38,6 +41,12 @@ export class ProductDetailsComponent implements OnInit, OnDestroy {
         this.errorMessage = 'No product specified.';
       }
     });
+  }
+
+  private scrollToTop(): void {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
   }
 
   loadProduct(): void {
@@ -51,6 +60,7 @@ export class ProductDetailsComponent implements OnInit, OnDestroy {
         if (prod) {
           this.product = prod;
           this.selectedImage = (prod.images && prod.images.length > 0) ? prod.images[0] : '';
+          setTimeout(() => this.scrollToTop(), 0);
         } else {
           this.product = null;
           this.errorMessage = 'The requested creation could not be found.';
@@ -75,4 +85,5 @@ export class ProductDetailsComponent implements OnInit, OnDestroy {
     this.productSub?.unsubscribe();
   }
 }
+
 

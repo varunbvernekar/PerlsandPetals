@@ -12,6 +12,7 @@ import {
 import { Subscription } from 'rxjs';
 import { ProductService } from '../../core/services/product.service';
 import { StorageService, UploadProgress } from '../../core/services/storage.service';
+import { ImageProcessingService } from '../../core/services/image-processing.service';
 
 /** Cross-field validator: discount must be < original */
 function discountValidator(group: AbstractControl): ValidationErrors | null {
@@ -28,9 +29,16 @@ interface PendingImage {
   file: File;
   previewUrl: string;
   progress: number;
-  state: 'pending' | 'uploading' | 'done' | 'error';
+  state: 'pending' | 'processing' | 'uploading' | 'done' | 'error';
   downloadURL?: string;
   error?: string;
+  /** WebP blob from ImageProcessingService (set after processing) */
+  processedBlob?: Blob;
+  processedFilename?: string;
+  /** Dimensions and size info for display */
+  outputWidth?: number;
+  outputHeight?: number;
+  outputSize?: number;
 }
 
 @Component({
@@ -45,10 +53,12 @@ export class AddProductComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private productService = inject(ProductService);
   private storageService = inject(StorageService);
+  private imageProcessing = inject(ImageProcessingService);
 
   form!: FormGroup;
   isSaving = false;
   isUploading = false;
+  isProcessing = false;
   errorMessage = '';
   fileError = '';
   discountPercent = 0;
@@ -137,12 +147,12 @@ export class AddProductComponent implements OnInit, OnDestroy {
   }
 
   get hasUploading(): boolean {
-    return this.pendingImages.some(img => img.state === 'uploading');
+    return this.pendingImages.some(img => img.state === 'uploading' || img.state === 'processing');
   }
 
   /**
-   * Uploads all pending images to the configured storage service.
-   * Requires the product name to generate a temp ID for the storage path.
+   * Processes all pending images to WebP (browser-side) then uploads to Storage.
+   * Processing: resize to max 1200px longest side, convert to WebP at 85% quality.
    */
   async uploadImages(): Promise<void> {
     const name = this.form.get('name')?.value?.trim();
@@ -154,25 +164,43 @@ export class AddProductComponent implements OnInit, OnDestroy {
     // Create a temporary storage folder ID based on slug
     const tempId = this.productService.generateId(this.productService.generateSlug(name));
 
-    this.isUploading = true;
     this.fileError = '';
 
     const pending = this.pendingImages.filter(img => img.state === 'pending');
     if (pending.length === 0) {
-      this.isUploading = false;
       return;
     }
 
-    let completed = 0;
-    const total = pending.length;
-
+    // ── Step 1: Process images to WebP (browser-side) ──
+    this.isProcessing = true;
     for (const img of pending) {
+      img.state = 'processing';
+      try {
+        const processed = await this.imageProcessing.processImage(img.file);
+        img.processedBlob = processed.blob;
+        img.processedFilename = processed.filename;
+        img.outputWidth = processed.outputWidth;
+        img.outputHeight = processed.outputHeight;
+        img.outputSize = processed.outputSize;
+        img.state = 'pending'; // ready to upload
+      } catch (err: any) {
+        img.state = 'error';
+        img.error = `Processing failed: ${err?.message || 'Unknown error'}`;
+        console.error(`[AddProductComponent] Processing error for ${img.file.name}:`, err);
+      }
+    }
+    this.isProcessing = false;
+
+    // ── Step 2: Upload processed WebP blobs ──
+    this.isUploading = true;
+    const readyToUpload = pending.filter(img => img.state === 'pending' && img.processedBlob);
+
+    for (const img of readyToUpload) {
       img.state = 'uploading';
 
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         let isResolved = false;
-        
-        // Add timeout: if upload takes more than 5 minutes, fail it
+
         const timeoutId = setTimeout(() => {
           if (!isResolved) {
             isResolved = true;
@@ -181,22 +209,23 @@ export class AddProductComponent implements OnInit, OnDestroy {
             console.error(`[AddProductComponent] Upload timeout for file: ${img.file.name}`);
             resolve();
           }
-        }, 5 * 60 * 1000); // 5 minute timeout
+        }, 5 * 60 * 1000);
 
-        const sub = this.storageService.uploadProductImage(tempId, img.file).subscribe({
+        const sub = this.storageService.uploadProductImage(
+          tempId,
+          img.file,
+          img.processedBlob,
+          img.processedFilename
+        ).subscribe({
           next: (progress: UploadProgress) => {
             img.progress = progress.progress;
             img.state = progress.state;
-            console.log(`[AddProductComponent] Upload progress for ${img.file.name}: ${progress.progress}% (${progress.state})`);
-            
             if (progress.state === 'done' && progress.downloadURL) {
               if (!isResolved) {
                 isResolved = true;
                 clearTimeout(timeoutId);
                 img.downloadURL = progress.downloadURL;
                 this.uploadedUrls.push(progress.downloadURL);
-                completed++;
-                console.log(`[AddProductComponent] Upload complete for ${img.file.name}`);
                 resolve();
               }
             } else if (progress.state === 'error') {
@@ -204,8 +233,6 @@ export class AddProductComponent implements OnInit, OnDestroy {
                 isResolved = true;
                 clearTimeout(timeoutId);
                 img.error = progress.error;
-                completed++;
-                console.error(`[AddProductComponent] Upload error for ${img.file.name}:`, progress.error);
                 resolve();
               }
             }
@@ -216,7 +243,6 @@ export class AddProductComponent implements OnInit, OnDestroy {
               clearTimeout(timeoutId);
               img.state = 'error';
               img.error = err?.message || 'Upload failed';
-              console.error(`[AddProductComponent] Observable error for ${img.file.name}:`, err);
               resolve();
             }
           }

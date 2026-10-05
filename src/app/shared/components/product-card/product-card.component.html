@@ -1,4 +1,4 @@
-<div class="product-card" *ngIf="product">
+<div class="product-card" *ngIf="product" [class.is-out-of-stock]="!product.available">
   <div class="card-image-wrapper">
     <!-- Product image: lazy loaded, falls back to placeholder on error -->
     <img
@@ -9,8 +9,9 @@
       (error)="onImageError($event)">
 
     <div class="card-badges">
-      <span *ngIf="product.onSale" class="badge badge-sale">Sale</span>
-      <span *ngIf="product.featured" class="badge badge-gold">Featured</span>
+      <span *ngIf="!product.available" class="badge badge-out-of-stock">Out of Stock</span>
+      <span *ngIf="product.available && product.onSale" class="badge badge-sale">Sale</span>
+      <span *ngIf="product.available && product.featured" class="badge badge-gold">Featured</span>
     </div>
 
     <div class="image-overlay">
@@ -32,7 +33,7 @@
         <span class="current-price">{{ (product.onSale && product.discountPrice ? product.discountPrice : product.originalPrice) | currency:'INR':'₹' }}</span>
         <span *ngIf="product.onSale && product.discountPrice" class="original-price">{{ product.originalPrice | currency:'INR':'₹' }}</span>
       </div>
-      <span class="stock-status" [class.in-stock]="product.available">
+      <span class="stock-status" [class.in-stock]="product.available" [class.out-of-stock]="!product.available">
         {{ product.available ? 'In Stock' : 'Out of Stock' }}
       </span>
     </div>

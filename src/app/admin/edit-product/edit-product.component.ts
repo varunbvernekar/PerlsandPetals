@@ -12,6 +12,7 @@ import {
 import { Subscription } from 'rxjs';
 import { ProductService } from '../../core/services/product.service';
 import { StorageService, UploadProgress } from '../../core/services/storage.service';
+import { ImageProcessingService } from '../../core/services/image-processing.service';
 import { Product } from '../../models/product.model';
 
 /** Cross-field validator: discount must be < original */
@@ -29,9 +30,15 @@ interface PendingImage {
   file: File;
   previewUrl: string;
   progress: number;
-  state: 'pending' | 'uploading' | 'done' | 'error';
+  state: 'pending' | 'processing' | 'uploading' | 'done' | 'error';
   downloadURL?: string;
   error?: string;
+  /** WebP blob from ImageProcessingService */
+  processedBlob?: Blob;
+  processedFilename?: string;
+  outputWidth?: number;
+  outputHeight?: number;
+  outputSize?: number;
 }
 
 @Component({
@@ -47,13 +54,16 @@ export class EditProductComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private productService = inject(ProductService);
   private storageService = inject(StorageService);
+  private imageProcessing = inject(ImageProcessingService);
 
+  product: Product | null = null;
   form!: FormGroup;
   productId = '';
   productName = '';
   isLoading = true;
   isSaving = false;
   isUploading = false;
+  isProcessing = false;
   loadError = '';
   errorMessage = '';
   fileError = '';
@@ -99,6 +109,7 @@ export class EditProductComponent implements OnInit, OnDestroy {
           this.isLoading = false;
           return;
         }
+        this.product = product;
         this.productName = product.name;
         this.existingImages = product.images ? [...product.images] : [];
 
@@ -193,21 +204,49 @@ export class EditProductComponent implements OnInit, OnDestroy {
   }
 
   get hasUploading(): boolean {
-    return this.pendingImages.some(img => img.state === 'uploading');
+    return this.pendingImages.some(img => img.state === 'uploading' || img.state === 'processing');
   }
 
   async uploadImages(): Promise<void> {
     const pending = this.pendingImages.filter(img => img.state === 'pending');
     if (pending.length === 0) return;
 
-    this.isUploading = true;
     this.fileError = '';
 
+    // ── Step 1: Process images to WebP (browser-side) ──
+    this.isProcessing = true;
     for (const img of pending) {
+      img.state = 'processing';
+      try {
+        const processed = await this.imageProcessing.processImage(img.file);
+        img.processedBlob = processed.blob;
+        img.processedFilename = processed.filename;
+        img.outputWidth = processed.outputWidth;
+        img.outputHeight = processed.outputHeight;
+        img.outputSize = processed.outputSize;
+        img.state = 'pending'; // ready to upload
+      } catch (err: any) {
+        img.state = 'error';
+        img.error = `Processing failed: ${err?.message || 'Unknown error'}`;
+        console.error(`[EditProductComponent] Processing error for ${img.file.name}:`, err);
+      }
+    }
+    this.isProcessing = false;
+
+    // ── Step 2: Upload processed WebP blobs ──
+    this.isUploading = true;
+    const readyToUpload = pending.filter(img => img.state === 'pending' && img.processedBlob);
+
+    for (const img of readyToUpload) {
       img.state = 'uploading';
 
       await new Promise<void>(resolve => {
-        const sub = this.storageService.uploadProductImage(this.productId, img.file).subscribe({
+        const sub = this.storageService.uploadProductImage(
+          this.productId,
+          img.file,
+          img.processedBlob,
+          img.processedFilename
+        ).subscribe({
           next: (progress: UploadProgress) => {
             img.progress = progress.progress;
             img.state = progress.state;

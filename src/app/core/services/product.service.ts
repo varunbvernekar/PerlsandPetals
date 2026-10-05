@@ -55,7 +55,6 @@ export class ProductService {
       this.supabase
         .from('products')
         .select('*')
-        .eq('available', true)
     ).pipe(
       map(response => {
         if (response.error) {
@@ -91,7 +90,7 @@ export class ProductService {
           }
           throw response.error;
         }
-        return response.data as Product || null;
+        return response.data ? this.mapProduct(response.data) : null;
       }),
       catchError(() => of(null))
     );
@@ -156,7 +155,6 @@ export class ProductService {
         .from('products')
         .select('*')
         .eq('featured', true)
-        .eq('available', true)
     ).pipe(
       map(response => {
         if (response.error) {
@@ -172,7 +170,7 @@ export class ProductService {
   }
 
   /**
-   * Retrieves products by category, supporting casing variations.
+   * Retrieves products by category, supporting casing variations and 'out-of-stock'.
    */
   getProductsByCategory(category: string): Observable<Product[]> {
     if (!category || category.toLowerCase() === 'all') {
@@ -181,17 +179,38 @@ export class ProductService {
 
     const normalized = category.toLowerCase().trim();
 
+    // Check for "out-of-stock" category filter
+    if (normalized === 'out-of-stock' || normalized === 'out of stock') {
+      return from(
+        this.supabase
+          .from('products')
+          .select('*')
+          .eq('available', false)
+      ).pipe(
+        map(response => {
+          if (response.error) {
+            throw response.error;
+          }
+          return this.mapProducts(response.data || []);
+        }),
+        catchError(err => {
+          this.markFallback(err);
+          const filtered = FALLBACK_PRODUCTS.filter(p => !p.available);
+          return of(filtered);
+        })
+      );
+    }
+
     return from(
       this.supabase
         .from('products')
         .select('*')
-        .eq('available', true)
     ).pipe(
       map(response => {
         if (response.error) {
           throw response.error;
         }
-        const products = (response.data || []) as Product[];
+        const products = this.mapProducts(response.data || []);
         // Filter locally by category (case-insensitive)
         return products.filter(p =>
           (p.category || '').toLowerCase() === normalized
@@ -282,16 +301,25 @@ export class ProductService {
 
   /**
    * Deletes a product from Supabase by ID.
+   * Verifies that the row was actually deleted in PostgreSQL.
    */
   async deleteProduct(id: string): Promise<void> {
-    const { error } = await this.supabase
+    const { data, error } = await this.supabase
       .from('products')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .select();
 
     if (error) {
       console.error('[ProductService] Delete product error:', error);
       throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('[ProductService] 0 rows deleted for id:', id);
+      throw new Error(
+        'Product could not be deleted from the database. Row Level Security (RLS) on your Supabase "products" table is missing a DELETE policy for authenticated users.'
+      );
     }
   }
 
@@ -302,8 +330,12 @@ export class ProductService {
     const message = err?.message || '';
     const code = err?.code || '';
 
-    if (message.includes('permission denied') || code === 'PGRST001') {
-      return 'Permission denied. You may not have access to this resource.';
+    if (message.includes('Row Level Security') || message.includes('RLS')) {
+      return message;
+    }
+
+    if (message.includes('permission denied') || code === 'PGRST001' || code === '42501') {
+      return 'Permission denied. Row Level Security in Supabase does not allow deleting products. Please enable the DELETE policy in Supabase.';
     }
 
     if (message.includes('Unexpected end of JSON input') || message.includes('Failed to parse JSON')) {
@@ -315,7 +347,7 @@ export class ProductService {
     }
 
     if (message.includes('row level security')) {
-      return 'Access denied by security policy. Please contact support.';
+      return 'Access denied by Supabase security policy. Please check RLS policies in your Supabase dashboard.';
     }
 
     return message || 'An error occurred. Please try again.';

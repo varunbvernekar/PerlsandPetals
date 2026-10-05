@@ -20,7 +20,7 @@
 .brand-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   text-decoration: none;
 
   .brand-icon {
@@ -44,11 +44,15 @@
     font-size: 1.4rem;
     font-weight: 700;
     letter-spacing: 0.04em;
-    color: var(--accent-pearl);
+    color: var(--accent-gold);
+    background: linear-gradient(135deg, #f5e4a0 0%, #d4af37 60%, #aa8420 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: filter var(--transition-fast);
   }
 
   &:hover .brand-text {
-    color: var(--accent-gold-light);
+    filter: brightness(1.18);
   }
 }
 
@@ -89,7 +93,27 @@
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+}
+
+.search-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    color: var(--accent-gold);
+    background: rgba(212, 175, 55, 0.08);
+    border-color: rgba(212, 175, 55, 0.2);
+  }
 }
 
 .admin-link {

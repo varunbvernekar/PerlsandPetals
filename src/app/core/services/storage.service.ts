@@ -2,11 +2,14 @@ import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { Observable } from 'rxjs';
 
-/** Allowed MIME types for product images */
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+/** Allowed MIME types for product images (before WebP conversion) */
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif'];
 
-/** Max file size: 5 MB */
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+/** Accept any image/* type broadly */
+const ALLOWED_TYPE_PREFIX = 'image/';
+
+/** Max file size: 10 MB (before compression) */
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export interface UploadProgress {
   file: File;
@@ -29,12 +32,13 @@ export class StorageService {
    * Returns null if valid, or an error message string.
    */
   validateFile(file: File): string | null {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return `"${file.name}" is not a supported image format. Please use JPG, PNG, or WEBP.`;
+    const isImage = file.type.startsWith(ALLOWED_TYPE_PREFIX) || ALLOWED_TYPES.includes(file.type);
+    if (!isImage) {
+      return `"${file.name}" is not a supported image format. Please use JPG, PNG, WebP, or GIF.`;
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
       const mb = (file.size / 1024 / 1024).toFixed(1);
-      return `"${file.name}" is ${mb} MB — exceeds the 5 MB limit. Please compress or resize the image.`;
+      return `"${file.name}" is ${mb} MB — exceeds the 10 MB limit. Please use a smaller image.`;
     }
     return null;
   }
@@ -43,13 +47,22 @@ export class StorageService {
    * Uploads a single file to Supabase Storage under product-images/<productId>/<uniqueName>.
    * Returns an Observable emitting UploadProgress snapshots.
    */
+  /**
+   * Uploads a processed WebP blob (or a raw File) to Supabase Storage.
+   * @param productId  Storage folder / product ID
+   * @param file       Original File (used as fallback blob)
+   * @param webpBlob   Optional pre-processed WebP Blob from ImageProcessingService
+   * @param webpFilename Optional filename for the WebP blob (e.g. "photo.webp")
+   */
   uploadProductImage(
     productId: string,
-    file: File
+    file: File,
+    webpBlob?: Blob,
+    webpFilename?: string
   ): Observable<UploadProgress> {
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const uniqueName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+    const uniqueName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${webpFilename ?? file.name.replace(/\.[^.]+$/, '') + '.webp'}`;
     const storagePath = `${productId}/${uniqueName}`;
+    const uploadBlob: Blob = webpBlob ?? file;
 
     return new Observable<UploadProgress>(observer => {
       const performUpload = async () => {
@@ -57,10 +70,11 @@ export class StorageService {
           // Emit uploading state with 10% progress
           observer.next({ file, progress: 10, state: 'uploading' });
 
-          // Upload file to Supabase Storage
+          // Upload optimized WebP blob (or original file) to Supabase Storage
           const { data, error } = await this.supabase.storage
             .from(this.bucketName)
-            .upload(storagePath, file, {
+            .upload(storagePath, uploadBlob, {
+              contentType: 'image/webp',
               cacheControl: '3600',
               upsert: false
             });
